@@ -1,0 +1,210 @@
+---
+title: "CEE290_HW1"
+author: "Gulnaz Shalgumbayeva"
+date: "2024-04-14"
+output: word_document
+---
+
+
+***Problem 1*** 
+```{r }
+# Define the matrix X
+X <- matrix(c(-2, 4, 1, 5, 0,
+              0, 2, 0, 4, 2,
+              -1, -2, 0, 3, 2,
+              2, 1, -4, -5, -1,
+              0, -2, -3, 0, 0), byrow = TRUE, nrow = 5)
+
+# Define the vector d̃
+d_tilde <- c(-26, -18, -29, 54, 1)
+
+# Calculate the least squares solution theta_hat
+# This is done by solving the normal equation (X^T X) theta = X^T d_tilde
+theta_hat <- solve(t(X) %*% X) %*% t(X) %*% d_tilde
+
+# Output theta_hat
+theta_hat
+
+
+```
+
+Checking with lm function 
+
+
+
+```{r}
+# Create a data frame representing the system
+df <- data.frame(a = c(-2, 0, -1, 2, 0),
+                 b = c(4, 2, -2, 1, -2),
+                 c = c(1, 0, 0, -4, -3),
+                 d = c(5, 4, 3, -5, 0),
+                 e = c(0, 2, 2, -1, 0),
+                 f = c(-26, -18, -29, 54, 1)) # f is the response
+
+# Use lm to solve it
+fit <- lm(f ~ a + b + c + d + e - 1, data = df) # '-1' to exclude the intercept
+
+# The coefficients should be close to the theta vector
+coef(fit)
+
+
+```
+
+```{r}
+# Define the matrix X
+X <- matrix(c(-2, 4, 1, 5, 0,
+              0, 2, 0, 4, 2,
+              -1, -2, 0, 3, 2,
+              2, 1, -4, -5, -1,
+              0, -2, -3, 0, 0), byrow = TRUE, nrow = 5)
+
+# Calculate the determinant of X
+determinant_X <- det(X)
+
+# Output the determinant
+determinant_X
+```
+
+***Problem 2***
+***part 2.3***
+```{r}
+# Define the vectors for time t and infiltration I
+t <- c(0.01, 0.02, 0.05, 0.10, 0.20, 0.50, 1.00)
+I <- c(0.051, 0.075, 0.123, 0.176, 0.264, 0.451, 0.682)
+
+# Define the design matrix X with sqrt(t) and t
+X <- cbind(sqrt(t), t)
+
+# Calculate the least squares solution using the normal equation
+theta_hat_normal <- solve(t(X) %*% X) %*% t(X) %*% I
+
+# Print the solution with at least 3 digits for the fractional part
+print(theta_hat_normal, digits = 6)
+
+```
+check with lm function 
+```{r}
+# We can use a data frame to store our variables for lm function
+data <- data.frame(t = c(0.01, 0.02, 0.05, 0.10, 0.20, 0.50, 1.00),
+                   I = c(0.051, 0.075, 0.123, 0.176, 0.264, 0.451, 0.682),
+                   sqrt_t = sqrt(c(0.01, 0.02, 0.05, 0.10, 0.20, 0.50, 1.00)))
+
+# Perform the linear regression with lm
+# Notice that we use '0 +' to remove the intercept from the model
+# and 'sqrt_t' to represent S*sqrt(t) and 't' for Ks*t
+fit <- lm(I ~ 0 + sqrt_t + t, data = data)
+
+# Extract the coefficients for S (associated with sqrt_t) and Ks (associated with t)
+theta_hat_lm <- coef(fit)
+
+# Print the solution with at least 3 digits for the fractional part
+print(theta_hat_lm, digits = 6)
+
+```
+***part 2.4***
+```{r}
+# Our estimated parameters
+S <-0.511503
+Ks <- 0.171996  # Ks
+
+# Original observed data
+t <- c(0.01, 0.02, 0.05, 0.10, 0.20, 0.50, 1.00)
+I_observed <- c(0.051, 0.075, 0.123, 0.176, 0.264, 0.451, 0.682)
+
+# Create a sequence of time values for the simulation
+t_sim <- seq(min(t), max(t), length.out = 100)
+
+# Simulate the infiltration curve using the computed coefficients
+I_simulated <- S * sqrt(t_sim) + Ks * t_sim
+
+# Plot the observed data
+plot(t, I_observed, xlab = "Time (hours)", ylab = "Infiltration (cm)",
+     pch = 3, col = "red", main = "Observed vs Simulated Infiltration")
+
+# Plot the simulated infiltration curve
+lines(t_sim, I_simulated, col = "blue", lwd = 2)
+
+# Add a legend
+legend("topright", legend = c("Data", "Model"),
+       col = c("red", "blue"), pch = c(3, NA), lty = c(NA, 1), lwd = c(NA, 2))
+
+# Assuming you want to save the plot to a file
+png("infiltration_plot.png")
+plot(t, I_observed, xlab = "Time (hours)", ylab = "Infiltration (cm)",
+     pch = 3, col = "red", main = "Observed vs Simulated Infiltration")
+lines(t_sim, I_simulated, col = "blue", lwd = 2)
+legend("topright", legend = c("Data", "Model"),
+       col = c("red", "blue"), pch = c(3, NA), lty = c(NA, 1), lwd = c(NA, 2))
+dev.off()
+
+```
+***part 2.5 and 2.6 ***
+```{r}
+
+S <-0.511503
+Ks <- 0.171996  # Ks
+
+# Calculate the predicted values using the model
+I_predicted <- S * sqrt(t) + Ks * t # my y hats 
+
+# Calculate residuals
+residuals <- I_observed - I_predicted # y-yhat
+
+# Calculate the sum of squared residuals
+SSR <- sum(residuals^2)
+
+# The units for SSR will be the square of the units for I (cm^2 )
+
+# calculate the covariance matrix manually
+# Assuming homoscedasticity and variance of error term is sigma^2
+sigma2 <- SSR / (length(I_observed) - 2) # 2 parameters estimated
+X <- cbind(sqrt(t), t)
+cov_matrix <- sigma2 * solve(t(X) %*% X)
+
+# Print the SSR and covariance matrix
+SSR
+cov_matrix
+
+```
+Check again with lm function 
+```{r}
+
+fit <- lm(I ~ sqrt_t + t - 1, data = data) # Make sure data has sqrt_t and t
+
+# The sum of squared residuals can be obtained from the model object
+SSR <- sum(resid(fit)^2)
+
+# The covariance matrix is obtained from the summary of the model object
+cov_matrix <- vcov(fit)
+
+# Print the SSR and covariance matrix
+SSR
+cov_matrix
+
+
+```
+***part 2.7***
+```{r}
+
+# Number of observations
+n <- length(residuals)
+# Number of parameters estimated, which is 2 in this case (S and Ks)
+p <- 2
+
+# Extract the standard errors from the covariance matrix
+standard_errors <- sqrt(diag(cov_matrix))
+# or I could do sigma_squared <- sum(residuals^2) / (n - p)
+# Assuming normality, the critical value for a 95% confidence interval is approximately 1.96
+critical_value <- qt(0.975, df=n-p) # More accurate using t-distribution with n-p degrees of freedom
+
+# Compute the confidence intervals for each parameter
+confidence_intervals <- data.frame(
+  lower = theta_hat - critical_value * standard_errors,
+  upper = theta_hat + critical_value * standard_errors
+)
+
+# Print the confidence intervals
+print(confidence_intervals)
+
+```
+
